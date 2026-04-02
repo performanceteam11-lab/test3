@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>브랜드검색 모니터링</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [x-cloak]{display:none!important}
+    .card-hover{transition:transform .15s,box-shadow .15s}
+    .card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+    .tab-active{border-bottom:3px solid #2563eb;color:#2563eb;font-weight:700}
+    .tab-inactive{border-bottom:3px solid transparent;color:#6b7280}
+    .dev-on{background:#2563eb;color:#fff}
+    .dev-off{background:#f3f4f6;color:#374151}
+    @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+    .fade-in{animation:fadeIn .2s ease}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="app()" x-init="load()">
+
+<!-- 헤더 -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+  <div class="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <span class="text-xl font-bold text-gray-900">브랜드검색 모니터링</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-400" x-text="data.date ? '기준일: ' + data.date : '로딩 중...'"></span>
+      <button @click="load()" class="px-3 py-1.5 text-xs border rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
+        새로고침
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- 로딩 -->
+<div x-show="loading" class="flex items-center justify-center py-32 text-gray-400">
+  <svg class="animate-spin w-8 h-8 mr-3" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+  <span>데이터 불러오는 중...</span>
+</div>
+
+<template x-if="!loading && data.stats">
+  <div>
+    <!-- 통계 -->
+    <div class="max-w-screen-xl mx-auto px-6 mt-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">전체 키워드</p>
+          <p class="text-3xl font-bold text-gray-900" x-text="data.stats.total"></p>
+        </div>
+        <div class="bg-white rounded-xl border border-emerald-200 p-5">
+          <p class="text-xs text-emerald-600 uppercase tracking-wide mb-1">노출</p>
+          <p class="text-3xl font-bold text-emerald-600" x-text="data.stats.exposed"></p>
+        </div>
+        <div class="bg-white rounded-xl border border-red-200 p-5">
+          <p class="text-xs text-red-500 uppercase tracking-wide mb-1">미노출</p>
+          <p class="text-3xl font-bold text-red-500" x-text="data.stats.not_exposed"></p>
+        </div>
+        <div class="bg-white rounded-xl border border-blue-200 p-5">
+          <p class="text-xs text-blue-600 uppercase tracking-wide mb-1">노출률</p>
+          <p class="text-3xl font-bold text-blue-600" x-text="data.stats.rate + '%'"></p>
+          <div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-2 bg-blue-500 rounded-full transition-all" :style="'width:' + data.stats.rate + '%'"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 브랜드 탭 -->
+    <div class="max-w-screen-xl mx-auto px-6 mt-8">
+      <div class="flex gap-0 border-b border-gray-200">
+        <button @click="brand='ninja'; selectedGroup='all'"
+          :class="brand==='ninja' ? 'tab-active' : 'tab-inactive'"
+          class="px-6 py-3 text-sm transition-colors">
+          Ninja <span class="ml-1 text-xs" x-text="'(' + byBrandDevice('ninja','pc').length + byBrandDevice('ninja','mo').length + '개)'"></span>
+        </button>
+        <button @click="brand='shark'; selectedGroup='all'"
+          :class="brand==='shark' ? 'tab-active' : 'tab-inactive'"
+          class="px-6 py-3 text-sm transition-colors">
+          Shark <span class="ml-1 text-xs" x-text="'(' + (byBrandDevice('shark','pc').length + byBrandDevice('shark','mo').length) + '개)'"></span>
+        </button>
+      </div>
+
+      <!-- 디바이스 + 카운트 -->
+      <div class="flex items-center justify-between mt-4 mb-2">
+        <div class="flex gap-2">
+          <button @click="device='pc'; selectedGroup='all'"
+            :class="device==='pc' ? 'dev-on' : 'dev-off'"
+            class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
+            PC (<span x-text="byBrandDevice(brand,'pc').length"></span>개)
+          </button>
+          <button @click="device='mo'; selectedGroup='all'"
+            :class="device==='mo' ? 'dev-on' : 'dev-off'"
+            class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
+            모바일 (<span x-text="byBrandDevice(brand,'mo').length"></span>개)
+          </button>
+        </div>
+        <p class="text-sm text-gray-500">
+          노출 <span class="font-bold text-emerald-600"
+            x-text="byBrandDevice(brand,device).filter(r=>r.exposed).length"></span> /
+          미노출 <span class="font-bold text-red-500"
+            x-text="byBrandDevice(brand,device).filter(r=>!r.exposed).length"></span>
+        </p>
+      </div>
+
+      <!-- 그룹 필터 -->
+      <div class="flex flex-wrap gap-2 mb-4 py-2 border-b border-gray-100">
+        <button @click="selectedGroup='all'"
+          :class="selectedGroup==='all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'"
+          class="px-3 py-1 rounded-full text-xs font-medium transition-colors">
+          전체
+        </button>
+        <template x-for="g in groups()" :key="g">
+          <button @click="selectedGroup=g"
+            :class="selectedGroup===g ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'"
+            class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+            x-text="g">
+          </button>
+        </template>
+      </div>
+
+      <!-- 카드 그리드 -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pb-16">
+        <template x-for="r in filteredResults()" :key="r.keyword + r.device">
+          <div class="bg-white rounded-xl border card-hover cursor-pointer select-none"
+            :class="r.exposed ? 'border-emerald-200' : 'border-red-200'"
+            @click="openModal(r)">
+            <div class="p-3">
+              <div class="flex items-center justify-between mb-2">
+                <span x-show="r.exposed"
+                  class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  노출
+                </span>
+                <span x-show="!r.exposed"
+                  class="inline-flex items-center gap-1 text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                  </svg>
+                  미노출
+                </span>
+                <!-- 네이버 바로가기 -->
+                <a :href="'https://search.naver.com/search.naver?query=' + encodeURIComponent(r.keyword)"
+                  target="_blank" rel="noopener" @click.stop
+                  class="flex items-center justify-center w-6 h-6 rounded bg-[#03C75A] hover:bg-[#02b350] transition-colors flex-shrink-0">
+                  <span class="text-white font-extrabold text-[10px] leading-none">N</span>
+                </a>
+              </div>
+              <p class="text-sm font-medium text-gray-800 break-all leading-snug" x-text="r.keyword"></p>
+              <div x-show="r.exposed && r.images && r.images.length > 0"
+                class="mt-2 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 h-20">
+                <img :src="'data:image/jpeg;base64,' + r.images[0]"
+                  class="w-full h-full object-cover object-top" loading="lazy"/>
+              </div>
+              <div x-show="!r.exposed"
+                class="mt-2 rounded-lg bg-red-50 border border-red-100 h-20 flex items-center justify-center">
+                <p class="text-xs text-red-300">미노출</p>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div x-show="filteredResults().length === 0"
+          class="col-span-5 text-center text-gray-400 py-12">
+          노출된 키워드가 없습니다
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- 모달 -->
+<div x-show="modal.open" x-cloak
+  class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="modal.open=false">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="modal.open=false"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div>
+        <p class="font-bold text-gray-900 text-lg" x-text="modal.r && modal.r.keyword"></p>
+        <div class="flex gap-2 mt-1">
+          <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
+            x-text="modal.r && (modal.r.device==='pc' ? 'PC' : '모바일')"></span>
+          <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"
+            x-text="modal.r && (modal.r.brand==='ninja' ? 'Ninja' : 'Shark')"></span>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+            :class="modal.r && modal.r.exposed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'"
+            x-text="modal.r && (modal.r.exposed ? '노출' : '미노출')"></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a x-show="modal.r"
+          :href="'https://search.naver.com/search.naver?query=' + encodeURIComponent(modal.r && modal.r.keyword)"
+          target="_blank" rel="noopener"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#03C75A] hover:bg-[#02b350] text-white text-xs font-bold transition-colors">
+          N 네이버에서 보기
+        </a>
+        <button @click="modal.open=false"
+          class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6">
+      <template x-if="modal.r && modal.r.images && modal.r.images.length > 0">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-gray-500">
+              소재 <span class="font-bold text-gray-900" x-text="modal.idx + 1"></span>
+              / <span x-text="modal.r.images.length"></span>
+            </p>
+            <div class="flex gap-2">
+              <button @click="modal.idx = Math.max(0, modal.idx-1)"
+                :disabled="modal.idx===0"
+                class="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-30 hover:bg-gray-50">이전</button>
+              <button @click="modal.idx = Math.min(modal.r.images.length-1, modal.idx+1)"
+                :disabled="modal.idx===modal.r.images.length-1"
+                class="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-30 hover:bg-gray-50">다음</button>
+            </div>
+          </div>
+          <div class="flex gap-1.5 mb-4 justify-center">
+            <template x-for="(img,i) in modal.r.images" :key="i">
+              <button @click="modal.idx=i"
+                :class="i===modal.idx ? 'bg-blue-600 w-5' : 'bg-gray-300 w-2'"
+                class="h-2 rounded-full transition-all duration-200"></button>
+            </template>
+          </div>
+          <div class="rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+            <img :src="'data:image/jpeg;base64,' + modal.r.images[modal.idx]"
+              class="w-full object-contain"/>
+          </div>
+        </div>
+      </template>
+      <template x-if="!modal.r || !modal.r.images || modal.r.images.length === 0">
+        <div class="flex flex-col items-center justify-center py-16 text-gray-400">
+          <p class="text-sm">캡처된 이미지가 없습니다</p>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+<script>
+function app() {
+  return {
+    loading:       true,
+    data:          {},
+    brand:         'ninja',
+    device:        'pc',
+    selectedGroup: 'all',
+    modal:         { open: false, r: null, idx: 0 },
+
+    async load() {
+      this.loading = true;
+      try {
+        const res  = await fetch('results.json?t=' + Date.now());
+        this.data  = await res.json();
+      } catch(e) {
+        console.error('results.json 로드 실패', e);
+      }
+      this.loading = false;
+    },
+
+    byBrandDevice(brand, device) {
+      return (this.data.results || []).filter(r => r.brand === brand && r.device === device);
+    },
+
+    groups() {
+      const items = this.byBrandDevice(this.brand, this.device);
+      return [...new Set(items.map(r => r.group_name))].sort();
+    },
+
+    filteredResults() {
+      return this.byBrandDevice(this.brand, this.device)
+        .filter(r => r.exposed)
+        .filter(r => this.selectedGroup === 'all' || r.group_name === this.selectedGroup);
+    },
+
+    openModal(r) {
+      this.modal.r    = r;
+      this.modal.idx  = 0;
+      this.modal.open = true;
+    },
+  };
+}
+</script>
+</body>
+</html>

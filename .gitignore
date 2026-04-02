@@ -1,0 +1,8 @@
+monitoring.db
+screenshots/
+logs/
+__pycache__/
+*.pyc
+*.pyo
+.env
+config.py
