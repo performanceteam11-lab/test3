@@ -48,7 +48,7 @@ def send_result(results: list[dict]):
         lines.append(":tada: 모든 키워드 정상 노출 중입니다!")
 
     lines.append("")
-    lines.append(":bar_chart: 대시보드 확인: http://localhost:5000")
+    lines.append(":bar_chart: 대시보드 확인: https://performanceteam11-lab.github.io/test3/")
 
     payload = {"text": "\n".join(lines)}
     data    = json.dumps(payload).encode("utf-8")
