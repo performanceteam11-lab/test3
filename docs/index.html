@@ -164,6 +164,10 @@
                 <img :src="'data:image/jpeg;base64,' + r.images[0]"
                   class="w-full h-full object-cover object-top" loading="lazy"/>
               </div>
+              <div x-show="r.exposed && (!r.images || r.images.length === 0)"
+                class="mt-2 rounded-lg bg-gray-50 border border-gray-100 h-20 flex items-center justify-center">
+                <p class="text-xs text-gray-300">이미지 없음</p>
+              </div>
               <div x-show="!r.exposed"
                 class="mt-2 rounded-lg bg-red-50 border border-red-100 h-20 flex items-center justify-center">
                 <p class="text-xs text-red-300">미노출</p>
@@ -266,6 +270,7 @@ function app() {
 
     async load() {
       this.loading = true;
+      this.selectedGroup = 'all';
       try {
         const res  = await fetch('results.json?t=' + Date.now());
         this.data  = await res.json();
