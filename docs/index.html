@@ -82,7 +82,7 @@
         <button @click="brand='ninja'; selectedGroup='all'"
           :class="brand==='ninja' ? 'tab-active' : 'tab-inactive'"
           class="px-6 py-3 text-sm transition-colors">
-          Ninja <span class="ml-1 text-xs" x-text="'(' + byBrandDevice('ninja','pc').length + byBrandDevice('ninja','mo').length + '개)'"></span>
+          Ninja <span class="ml-1 text-xs" x-text="'(' + (byBrandDevice('ninja','pc').length + byBrandDevice('ninja','mo').length) + '개)'"></span>
         </button>
         <button @click="brand='shark'; selectedGroup='all'"
           :class="brand==='shark' ? 'tab-active' : 'tab-inactive'"
